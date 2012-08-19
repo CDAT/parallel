@@ -1,6 +1,6 @@
 import cdms2
 import MV2
-import distarray
+from distarray.mvCubeDecomp import CubeDecomp
 import numpy
 import cdutil
 from mpi4py import MPI
@@ -10,7 +10,7 @@ import sys
 try:
     clt = cdms2.open('/usr/local/uvcdat/1.0.0/sample_data/clt.nc', 'r')['clt']
 except:
-    clt = cdms2.open('/home/pletzer/uvcdat/cdat/install/sample_data/clt.nc', 'r')['clt']
+    clt = cdms2.open('/home/pletzer/modave/cdat_tests/clt.nc', 'r')['clt']
 
 def getPrimeFactors(n):
     lo = [1]
@@ -36,7 +36,10 @@ nLat,nLon = clt.shape[1:]
 rk = MPI.COMM_WORLD.Get_rank()
 sz = MPI.COMM_WORLD.Get_size()
 
-npLat,npLon = getDomainDecomp(sz,(nLat,nLon))
+decomp = CubeDecomp(sz, (nLat,nLon))
+npLat,npLon = decomp.getDecomp()
+slab = decomp.getSlab(rk)
+
 if npLat is None or npLon is None:
     print 'could not find a domain decomp for this number of procs'
     sys.exit(1)
@@ -44,25 +47,20 @@ if npLat is None or npLon is None:
 if rk == 0:
     print 'domain decomp: ', npLat, ' x ', npLon
 
+iLatBeg , iLatEnd = slab[0].start, slab[0].stop
+iLonBeg , iLonEnd = slab[1].start, slab[1].stop
+print '[%d] sub-domain slab: %d:%d, %d:%d dims %d x %d size: %d' % (rk, iLatBeg, iLatEnd, iLonBeg, iLatEnd, iLatEnd - iLatBeg, iLonEnd - iLonBeg, (iLatEnd - iLatBeg)*(iLonEnd - iLonBeg))
+
 value=0
 cdms2.setNetcdfShuffleFlag(value) ## where value is either 0 or 1
 cdms2.setNetcdfDeflateFlag(value) ## where value is either 0 or 1
 cdms2.setNetcdfDeflateLevelFlag(value) ## where value is a integer between 0 and 9 included
-if rk == 0:
-    print "nlon,nlat:",nLat,nLon
-print rk,"nps:",npLat,npLon
 
-nlat,nlon = nLat/npLat , nLon/npLon
-ipLat = rk // npLon
-ipLon = rk % npLon
-
-iLatBeg , iLatEnd = ipLat * nlat, (ipLat+1) * nlat
-iLonBeg , iLonEnd = ipLon * nlon, (ipLon+1) * nlon
-print '[%d] sub-domain slab: %d:%d, %d:%d dims %d x %d size: %d' % (rk, iLatBeg, iLatEnd, iLonBeg, iLatEnd, iLatEnd - iLatBeg, iLonEnd - iLonBeg, (iLatEnd - iLatBeg)*(iLonEnd - iLonBeg))
-
+# read local data
 daclt = clt[:,iLatBeg:iLatEnd,iLonBeg:iLonEnd]
+
+# time average
 cdutil.setTimeBoundsMonthly(daclt)
-print rk,daclt.shape
 mp = cdutil.averager(daclt,axis='t')
 
 
@@ -75,10 +73,9 @@ if rk==0:
     for proc in range(sz):
         print len(lst),proc,lst[proc].shape
     for proc in range(sz):
-        ipLat = proc // npLon
-        ipLon = proc % npLon
-        iLatBeg , iLatEnd = ipLat * nlat, (ipLat+1) * nlat
-        iLonBeg , iLonEnd = ipLon * nlon, (ipLon+1) * nlon
+        slab = decomp.getSlab(proc)
+        iLatBeg , iLatEnd = slab[0].start, slab[0].stop
+        iLonBeg , iLonEnd = slab[1].start, slab[1].stop
         out[iLatBeg:iLatEnd,iLonBeg:iLonEnd] = lst[proc]
 
     lat = clt.getLatitude()
@@ -101,10 +98,9 @@ if rk==0:
         from matplotlib import pylab
         pylab.pcolor(out)
         for proc in range(sz):
-            ipLat = proc // npLon
-            ipLon = proc % npLon
-            iLatBeg , iLatEnd = ipLat * nlat, (ipLat+1) * nlat
-            iLonBeg , iLonEnd = ipLon * nlon, (ipLon+1) * nlon        
+            slab = decomp.getSlab(proc)
+            iLatBeg , iLatEnd = slab[0].start, slab[0].stop
+            iLonBeg , iLonEnd = slab[1].start, slab[1].stop
             pylab.plot([0, nLon], [iLatBeg, iLatBeg], 'w')
             pylab.plot([iLonBeg, iLonBeg], [0, nLat], 'w')
         pylab.show()
