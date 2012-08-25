@@ -5,12 +5,12 @@ import numpy
 import cdutil
 from mpi4py import MPI
 import sys
-
+fnm=sys.prefix+'/sample_data/clt.nc'
 # open file and read data
 try:
-    clt = cdms2.open('/usr/local/uvcdat/1.0.0/sample_data/clt.nc', 'r')['clt']
+    clt = cdms2.open(fnm)['clt']
 except:
-    clt = cdms2.open('/home/pletzer/modave/cdat_tests/clt.nc', 'r')['clt']
+    clt = cdms2.open('/home/pletzer/modave/cdat_tests/clt.nc')['clt']
 
 def getPrimeFactors(n):
     lo = [1]
@@ -39,6 +39,8 @@ sz = MPI.COMM_WORLD.Get_size()
 decomp = CubeDecomp(sz, (nLat,nLon))
 npLat,npLon = decomp.getDecomp()
 slab = decomp.getSlab(rk)
+
+print 'SLAB:',slab,type(slab)
 
 if npLat is None or npLon is None:
     print 'could not find a domain decomp for this number of procs'
