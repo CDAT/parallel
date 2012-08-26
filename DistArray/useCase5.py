@@ -14,24 +14,33 @@ f=cdms2.open(fnm)
 
 V=f[vr]
 
-D = Decompose(V,axes=['x','y'])
+if len(sys.argv)>1:
+    method=sys.argv[1]
+else:
+    method='blocks'
+    
+D = Decompose(V,axes=['x','y'],method=method)
 
 sub = V(D())
-print "Decomped",D.Aproc,sub.shape,sub.count()
+if D.n == 0 :
+    writeTime(method,"read:")
+print "Decomped",D.n,sub.shape,sub.count(),sub.getLatitude()[:5],sub.getLongitude()[:5]
+#print "Sel:",D()
 cdutil.times.setTimeBoundsMonthly(sub)
 sub=cdutil.DJF.departures(sub)
-print "DJFs",D.Aproc,sub.shape,sub.count()
+print "DJFs",D.n,sub.shape,sub.count()
 
 print "Gathering"
 
 out = D.gather(sub)
 
-if D.Aproc == 0 :
+if D.n == 0 :
     print out.shape
+    writeTime(method,"exec:")
 
-if D.Aproc == 0:
-    import vcs
-    x=vcs.init()
-    x.plot(out)
-    raw_input()
-#print D.Aproc,out
+## if D.n == 0:
+##     import vcs
+##     x=vcs.init()
+##     x.plot(out)
+##     raw_input()
+## #print D.n,out

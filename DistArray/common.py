@@ -2,6 +2,14 @@ from mpi4py import MPI
 import numpy
 comm = MPI.COMM_WORLD
 import cdms2,MV2
+import time
+import sys
+import os
+
+
+
+Aproc = comm.Get_rank() # This processor id
+Nproc = comm.Get_size() # N processors total
 
 def addOne(starts,lens,j):
     starts[j]+=1
@@ -11,13 +19,12 @@ def addOne(starts,lens,j):
     return starts
 
 class Decompose(object):
-    def __init__(self,V,axes=0):
+    def __init__(self,V,axes=0,method='stagger'):
         self.axes=[]
         for a in V.getAxisList():
             self.axes.append(a.clone())
-        self.Aproc = comm.Get_rank() # This processor id
-        self.Nproc = comm.Get_size() # N processors total
-        print "OK:",self.Aproc,self.Nproc
+        self.n = comm.Get_rank() # This processor id
+        self.N = comm.Get_size() # N processors total
         
         if isinstance(axes,int):
             axes=[axes,]
@@ -48,9 +55,9 @@ class Decompose(object):
         Ns.sort(key=lambda Is:Is)
         Is.sort()
         print "Ns,Is:",Ns,Is
-        strides = int(numpy.power(self.Nproc,1./len(axes)))
+        strides = int(numpy.power(self.N,1./len(axes)))
         ls = []
-        N=self.Nproc
+        N=self.N
         for i in range(len(axes)-1):
             ls.append(strides)
             N/=strides
@@ -58,26 +65,32 @@ class Decompose(object):
         ls.append(N)
         N=1
         for n in ls: N*=n
-        if N!=self.Nproc:
+        if N!=self.N:
             ls[-1]-=1
-            #raise Exception,"Can't decompose %i proc over %i dims" % (self.Nproc,len(axes))
+            #raise Exception,"Can't decompose %i proc over %i dims" % (self.N,len(axes))
 
         kw={}
         starts=[0,]*len(axes)
         i=0
-        while i<self.Aproc:
+        while i<self.n:
             starts=addOne(starts,ls,0)
             i+=1
 
 
-        #print 'Starts:',Aproc,starts
+        #print 'Starts:',n,starts
         j=0
         kw={}
         self.ids = []
         for i in range(len(V.shape)):
             if i in Is:
-                self.ids.append(V.getAxis(i).id)
-                kw[self.ids[-1]]=slice(starts[j],None,ls[j])
+                ax = V.getAxis(i)
+                self.ids.append(ax.id)
+                if method=='stagger':
+                    kw[self.ids[-1]]=slice(starts[j],None,ls[j])
+                elif method=='blocks':
+                    l = len(ax)/ls[j]
+                    print "L is:",l,ls[j]
+                    kw[self.ids[-1]]=slice(starts[j]*l,(starts[j]+1)*l)
                 j+=1
 
         self.selector = kw
@@ -104,7 +117,7 @@ class Decompose(object):
         if pos is None:
             pos=self.pos
             
-        if self.Aproc == root:
+        if self.n == root:
             sh=[]
             axes=[]
             j=0
@@ -118,7 +131,7 @@ class Decompose(object):
                 
                     
             out=numpy.zeros(sh)
-            for i in range(self.Nproc):
+            for i in range(self.N):
                 slices=lst2[i].getSlices()
                 print i,slices
                 Slices=[]
@@ -136,3 +149,16 @@ class Decompose(object):
             out.id=array.id
             return out
                 
+start=time.time()
+
+def writeTime(method,txt):
+    end=time.time()
+    fnm="%s_%i_%s.txt" % (sys.argv[0][:-3],Nproc,method)
+    if os.path.exists(fnm):
+        f=open(fnm,"r+")
+        f.read()
+    else:
+        f=open(fnm,"w")
+    print >>f, txt,end-start
+    print txt,end-start
+    f.close()
