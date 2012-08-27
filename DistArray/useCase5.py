@@ -28,6 +28,8 @@ print "Decomped",D.n,sub.shape,sub.count(),sub.getLatitude()[:5],sub.getLongitud
 #print "Sel:",D()
 cdutil.times.setTimeBoundsMonthly(sub)
 sub=cdutil.DJF.departures(sub)
+if D.n == 0 :
+    writeTime(method,"exec:")
 print "DJFs",D.n,sub.shape,sub.count()
 
 print "Gathering"
@@ -36,7 +38,7 @@ out = D.gather(sub)
 
 if D.n == 0 :
     print out.shape
-    writeTime(method,"exec:")
+    writeTime(method,"gather:")
 
 ## if D.n == 0:
 ##     import vcs
