@@ -89,8 +89,9 @@ class Decompose(object):
                     kw[self.ids[-1]]=slice(starts[j],None,ls[j])
                 elif method=='blocks':
                     l = len(ax)/ls[j]
-                    print "L is:",l,ls[j]
                     kw[self.ids[-1]]=slice(starts[j]*l,(starts[j]+1)*l)
+                else:
+                    raise Exception, "Unknown method: %s" % method
                 j+=1
 
         self.selector = kw
@@ -153,7 +154,9 @@ start=time.time()
 
 def writeTime(method,txt):
     end=time.time()
-    fnm="%s_%i_%s.txt" % (sys.argv[0][:-3],Nproc,method)
+    args = (sys.argv[0][:-3],)+os.uname()[:3]+(Nproc,method)
+    print args
+    fnm="timing_%s_%s_%s_%s_%i_%s.txt" % args
     if os.path.exists(fnm):
         f=open(fnm,"r+")
         f.read()

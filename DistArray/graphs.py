@@ -7,25 +7,33 @@ test = sys.argv[1]
 
 cpus = [1,2,3,4,6,8]
 methods = ["stagger","blocks"]
-speed=numpy.zeros((len(methods),len(cpus),3))
+speed=numpy.zeros((10,len(methods),len(cpus),3))
+machines=[]
+os=[]
+ver=[]
 for i,n in enumerate(cpus):
     for j,method in enumerate(methods):
-        fnm="%s_%i_%s.txt" % (test,n,method)
-        f=open(fnm)
-        k=0
-        while True:
-            try:
-                rd = float(f.readline().split()[1])
-                ex = float(f.readline().split()[1])
-                speed[j,i,0] += rd
-                speed[j,i,1] += ex - rd
-                speed[j,i,2] += ex 
-                k+=1
-            except:
-                break
-        speed[j,i,0]/=k
-        speed[j,i,1]/=k
-        speed[j,i,2]/=k
+        files = os.listdir(".")
+        for fnm in files:
+            if not (fnm[:7]=="timing_" and fnm.find("_%s_" % test)>-1):
+                continue
+            sp = fnm.split("_")
+            
+            f=open(fnm)
+            k=0
+            while True:
+                try:
+                    rd = float(f.readline().split()[1])
+                    ex = float(f.readline().split()[1])
+                    speed[j,i,0] += rd
+                    speed[j,i,1] += ex - rd
+                    speed[j,i,2] += ex 
+                    k+=1
+                except:
+                    break
+            speed[j,i,0]/=k
+            speed[j,i,1]/=k
+            speed[j,i,2]/=k
 cpu = cdms2.createAxis(range(len(cpus)))
 cpu = cdms2.createAxis(cpus)
 cpu.id = "Ncpus"
