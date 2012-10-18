@@ -83,7 +83,7 @@ import matplotlib.pyplot as plt
 
 
 fig, ax = plt.subplots(nrows=4,ncols=speed.shape[1])
-#fig.set_size_inches(8.,11.5)
+fig.set_size_inches(8.,11.5)
 print ax.shape
 
 plt.subplots_adjust(right=.78)
@@ -92,22 +92,41 @@ print cpus
 print machines
 print methods
 
+desc = {"meryem":"Mac (Snw)\n16 CPU 16Gb RAM",
+        "sofia":"Mac (Snw)\n8CPU 8Gb RAM",
+        "crunchy":"Linux (RH6)\n16CPU 96Gb RAM*\n*:Users intense"
+        }
 ax[0,0].set_ylabel('Read Time (s)')
 ax[1,0].set_ylabel('Compute Time (s)')
 ax[2,0].set_ylabel('Gather Time (s)')
 ax[3,0].set_ylabel('Total Time (s)')
+
+lgd = []
 for i in range(speed.shape[1]):
     ax[0,i].set_title(methods[i])
     for m in range(speed.shape[0]):
         for j in range(4):
-            kw = {'linewidth':1.5,'ms':5,'mfc':'orange'}
+            ax[2,i].set_ylim([0,2])
+            kw = {'linewidth':1.5,
+                  'ms':5,
+                  'mfc':'orange'
+                  }
             if j==0 and i==speed.shape[1]-1:
                 kw['label']=machines[m]
             ax[j,i].plot(cpus,speed[m,i,:,j],'-o',**kw)
     #ax[0,i].set_xlabel('NCPUS')
     ax[-1,i].set_xlabel('NCPUS')
-plt.legend(machines,shadow=True,fancybox=True,bbox_to_anchor=[1.72,4.25])
-#print dir(ax[0,0])
+    
+for m in machines:
+    lgd.append(desc[m])
+
+ax[0,-1].legend(lgd,shadow=True,fancybox=True,bbox_to_anchor=[1.72,1.15])#,font_size=1.)
+L=ax[0,-1].get_legend()
+
+ltext = L.get_texts()
+ltext[0].set_fontsize(6.5)
+F=L.get_frame()
+F.set_facecolor("beige")
 plt.savefig("DJF.png")
 plt.show()
 
